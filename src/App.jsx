@@ -161,6 +161,8 @@ function App() {
   });
   const [currentProjectId, setCurrentProjectId] = useState(null);
   const [projectName, setProjectName] = useState('Process Plan #1');
+  const [toastMessage, setToastMessage] = useState('');
+
   // Standard Time & Allowance Calculator States (ILO Standards)
   const [gender, setGender] = useState('men'); // 'men' | 'women'
   const [useSyncMTM, setUseSyncMTM] = useState(true);
@@ -183,6 +185,7 @@ function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
 
 
   const calculateRow = useCallback((row) => {
