@@ -204,10 +204,57 @@ function App() {
   const [customEfficiencyPct, setCustomEfficiencyPct] = useState('100');
   const [customEfficiencyLabel, setCustomEfficiencyLabel] = useState('Operator Efficiency / OEE');
 
+  // Multi-step Process Flowchart & Bottleneck States
+  const [processSteps, setProcessSteps] = useState([
+    { id: 1, name: 'Prepare Cream Puff Batter', timeSec: 45 },
+    { id: 2, name: 'Bake in Oven', timeSec: 120 },
+    { id: 3, name: 'Inject Filling', timeSec: 30 },
+    { id: 4, name: 'Package in Box', timeSec: 25 },
+  ]);
+
+  const addProcessStep = () => {
+    const newId = processSteps.length > 0 ? Math.max(...processSteps.map(s => s.id)) + 1 : 1;
+    setProcessSteps([
+      ...processSteps,
+      { id: newId, name: `Step ${processSteps.length + 1}`, timeSec: 30 }
+    ]);
+  };
+
+  const updateProcessStep = (id, field, value) => {
+    setProcessSteps(processSteps.map(step => {
+      if (step.id === id) {
+        return { ...step, [field]: value };
+      }
+      return step;
+    }));
+  };
+
+  const removeProcessStep = (id) => {
+    if (processSteps.length <= 1) {
+      showToast('⚠️ Process line must have at least 1 step');
+      return;
+    }
+    setProcessSteps(processSteps.filter(s => s.id !== id));
+  };
+
+  const moveProcessStep = (id, direction) => {
+    const idx = processSteps.findIndex(s => s.id === id);
+    if (idx < 0) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === processSteps.length - 1) return;
+    const newSteps = [...processSteps];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const temp = newSteps[idx];
+    newSteps[idx] = newSteps[targetIdx];
+    newSteps[targetIdx] = temp;
+    setProcessSteps(newSteps);
+  };
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
 
 
 
@@ -637,9 +684,75 @@ Total Allowance %: ${totalAllowancePct}%
 
   const calcEfficiencyPct = parseFloat(customEfficiencyPct) || 100;
 
+  // Multi-step Bottleneck Analysis Calculations
+  let maxStepTimeSec = 0;
+  let bottleneckStepObj = null;
+  let totalLineWorkContentSec = 0;
+
+  processSteps.forEach(s => {
+    const t = parseFloat(s.timeSec) || 0;
+    totalLineWorkContentSec += t;
+    if (t > maxStepTimeSec) {
+      maxStepTimeSec = t;
+      bottleneckStepObj = s;
+    }
+  });
+
+  const multiStepSystemUPH = maxStepTimeSec > 0 ? (3600 / maxStepTimeSec) : 0;
+  const lineEfficiencyPct = (processSteps.length > 0 && maxStepTimeSec > 0)
+    ? ((totalLineWorkContentSec / (processSteps.length * maxStepTimeSec)) * 100)
+    : 0;
+
+  const generateMermaidCode = () => {
+    if (processSteps.length === 0) return '%% No steps defined';
+
+    let code = `flowchart LR\n`;
+    code += `    %% Class Styles\n`;
+    code += `    classDef default fill:#1e293b,stroke:#475569,stroke-width:2px,color:#f8fafc;\n`;
+    code += `    classDef bottleneck fill:#7f1d1d,stroke:#ef4444,stroke-width:3px,color:#fef2f2;\n`;
+    code += `    classDef outputNode fill:#065f46,stroke:#34d399,stroke-width:3px,color:#ecfdf5;\n\n`;
+
+    processSteps.forEach((step, idx) => {
+      const stepNum = idx + 1;
+      const isBottleneck = bottleneckStepObj && step.id === bottleneckStepObj.id;
+      const cleanName = (step.name || `Step ${stepNum}`).replace(/["\n]/g, "'");
+      
+      if (isBottleneck) {
+        code += `    S${step.id}["🔥 Step ${stepNum}: ${cleanName}<br/>⏱️ ${step.timeSec}s (BOTTLENECK)"]:::bottleneck\n`;
+      } else {
+        code += `    S${step.id}["Step ${stepNum}: ${cleanName}<br/>⏱️ ${step.timeSec}s"]\n`;
+      }
+    });
+
+    code += `    OUT["⚡ Total System UPH<br/><b>${multiStepSystemUPH.toFixed(1)} UPH</b><br/>(3600 / ${maxStepTimeSec}s)"]:::outputNode\n\n`;
+
+    for (let i = 0; i < processSteps.length - 1; i++) {
+      code += `    S${processSteps[i].id} --> S${processSteps[i + 1].id}\n`;
+    }
+
+    if (processSteps.length > 0) {
+      code += `    S${processSteps[processSteps.length - 1].id} --> OUT\n`;
+    }
+
+    return code;
+  };
+
+  const copyMermaidCodeToClipboard = () => {
+    const code = generateMermaidCode();
+    navigator.clipboard.writeText(code);
+    showToast('📋 Mermaid.js flowchart code copied to clipboard!');
+  };
+
+  const applyMultiStepUPHToCapacity = () => {
+    setUphDirect(multiStepSystemUPH.toFixed(1));
+    setUphMode('direct');
+    showToast(`⚡ Applied System UPH (${multiStepSystemUPH.toFixed(1)}) to Master Capacity Equation!`);
+  };
+
   // Master Equation: Daily Capacity (Good Parts) = UPH * (Yield/100) * Working Hours * (Util/100) * (Eff/100)
   const rawDailyCapacity = calcUPH * (calcYieldPct / 100) * calcWorkingHours * (calcUtilPct / 100) * (calcEfficiencyPct / 100);
   const finalDailyCapacityParts = Math.round(rawDailyCapacity);
+
 
   const resetDailyCapacityInputs = () => {
     setUphMode('sync');
@@ -2078,8 +2191,167 @@ ${calcUPH.toFixed(1)} UPH × ${(calcYieldPct / 100).toFixed(4)} (Yield) × ${cal
             </div>
           </div>
 
+          {/* Multi-Step Flowchart & Bottleneck Visualizer Card */}
+          <div className="flowchart-visualizer-card">
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.15rem' }}>
+                  🔀 Multi-Step Process Bottleneck Analysis & Mermaid Flowchart
+                </h3>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  Define your sequential process steps to identify the bottleneck (CT_max) and calculate Total System UPH (3,600 / CT_max).
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary btn-sm" onClick={addProcessStep}>
+                  + Add Process Step
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={applyMultiStepUPHToCapacity} title="Apply calculated System UPH to master equation">
+                  ⚡ Apply System UPH ({multiStepSystemUPH.toFixed(1)})
+                </button>
+                <button className="btn btn-sm" onClick={copyMermaidCodeToClipboard} title="Copy GFM Mermaid.js code">
+                  📋 Copy Mermaid Code
+                </button>
+              </div>
+            </div>
+
+            {/* IE Bottleneck Summary Bar */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: 'rgba(30, 41, 59, 0.6)', padding: '14px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ flex: '1 1 180px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>🔥 Line Bottleneck Step</span>
+                <div style={{ fontSize: '1rem', fontWeight: '700', color: '#ef4444' }}>
+                  {bottleneckStepObj ? `${bottleneckStepObj.name} (${bottleneckStepObj.timeSec}s)` : 'N/A'}
+                </div>
+              </div>
+              <div style={{ flex: '1 1 150px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>⚡ Total System UPH</span>
+                <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#34d399' }}>
+                  {multiStepSystemUPH.toFixed(1)} UPH
+                </div>
+              </div>
+              <div style={{ flex: '1 1 150px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>⏱️ Total Work Content</span>
+                <div style={{ fontSize: '1rem', fontWeight: '700', color: '#38bdf8' }}>
+                  {totalLineWorkContentSec.toFixed(1)} sec
+                </div>
+              </div>
+              <div style={{ flex: '1 1 150px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>📊 Line Balance Efficiency</span>
+                <div style={{ fontSize: '1rem', fontWeight: '700', color: '#a78bfa' }}>
+                  {lineEfficiencyPct.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+
+            {/* Editable Steps Table */}
+            <div className="ref-table-wrapper">
+              <table className="ref-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '80px' }}>Order</th>
+                    <th>Process Task Name</th>
+                    <th style={{ width: '180px' }} className="center">Cycle Time (sec)</th>
+                    <th style={{ width: '150px' }} className="center">Status</th>
+                    <th style={{ width: '110px' }} className="center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processSteps.map((step, index) => {
+                    const isBottleneck = bottleneckStepObj && step.id === bottleneckStepObj.id;
+                    return (
+                      <tr key={step.id} style={isBottleneck ? { background: 'rgba(239, 68, 68, 0.12)' } : {}}>
+                        <td className="center">
+                          <button className="icon-btn" onClick={() => moveProcessStep(step.id, 'up')} disabled={index === 0}>▲</button>
+                          <button className="icon-btn" onClick={() => moveProcessStep(step.id, 'down')} disabled={index === processSteps.length - 1}>▼</button>
+                        </td>
+                        <td>
+                          <input 
+                            type="text" 
+                            value={step.name} 
+                            onChange={(e) => updateProcessStep(step.id, 'name', e.target.value)}
+                            placeholder="Task name..."
+                            className="std-num-input"
+                            style={{ width: '100%' }}
+                          />
+                        </td>
+                        <td className="center">
+                          <input 
+                            type="number" 
+                            min="0.1" 
+                            step="any"
+                            value={step.timeSec} 
+                            onChange={(e) => updateProcessStep(step.id, 'timeSec', e.target.value)}
+                            className="std-num-input"
+                            style={{ width: '100px', textAlign: 'center' }}
+                          />
+                        </td>
+                        <td className="center">
+                          {isBottleneck ? (
+                            <span className="badge-tag" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                              🔥 BOTTLENECK
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Normal</span>
+                          )}
+                        </td>
+                        <td className="center">
+                          <button className="icon-btn delete" onClick={() => removeProcessStep(step.id)} title="Remove step">✕</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Interactive Visual Flowchart Nodes */}
+            <div style={{ marginTop: '10px' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: '#f8fafc', fontSize: '0.95rem' }}>🎨 Visual Process Line Flowchart:</h4>
+              <div className="flowchart-nodes-wrapper">
+                {processSteps.map((step, idx) => {
+                  const isBottleneck = bottleneckStepObj && step.id === bottleneckStepObj.id;
+                  return (
+                    <React.Fragment key={step.id}>
+                      <div className={`flowchart-node ${isBottleneck ? 'bottleneck' : ''}`}>
+                        <span className="node-step-tag">Step {idx + 1} {isBottleneck ? '• BOTTLENECK 🔥' : ''}</span>
+                        <div className="node-title">{step.name || `Step ${idx + 1}`}</div>
+                        <div className="node-time">⏱️ {step.timeSec || '0'}s</div>
+                      </div>
+                      <div className="flowchart-arrow">➔</div>
+                    </React.Fragment>
+                  );
+                })}
+
+                <div className="flowchart-node output-node">
+                  <span className="node-step-tag" style={{ color: '#6ee7b7' }}>System Output ⚡</span>
+                  <div className="node-title">Total System UPH</div>
+                  <div className="node-time" style={{ color: '#34d399' }}>{multiStepSystemUPH.toFixed(1)} UPH</div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>(3600 / {maxStepTimeSec}s)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mermaid.js Code Syntax Block */}
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#60a5fa' }}>
+                  💻 Mermaid.js Code (For GFM / Notion / Diagrams.net):
+                </span>
+                <button className="btn btn-sm" onClick={copyMermaidCodeToClipboard}>
+                  📋 Copy Mermaid Code
+                </button>
+              </div>
+              <pre className="mermaid-code-container">
+                {generateMermaidCode()}
+              </pre>
+            </div>
+          </div>
+
           {/* Master Output Result & Verification Card */}
           <div className="master-equation-card">
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div>
                 <span className="label" style={{ color: '#34d399', fontSize: '0.9rem', fontWeight: '700' }}>

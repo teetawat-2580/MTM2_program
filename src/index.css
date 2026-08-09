@@ -1363,4 +1363,100 @@ select option.theme-other-rose { color: #f472b6; background: #4c0519; font-weigh
   line-height: 1.6;
 }
 
+/* Multi-Step Flowchart & Bottleneck Visualizer Styles */
+.flowchart-visualizer-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.flowchart-nodes-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 16px 8px;
+  scroll-behavior: smooth;
+}
+
+.flowchart-node {
+  flex: 0 0 200px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 2px solid #475569;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.flowchart-node.bottleneck {
+  background: rgba(127, 29, 29, 0.5);
+  border: 2.5px solid #ef4444;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+  transform: scale(1.03);
+}
+
+.flowchart-node.output-node {
+  background: rgba(6, 95, 70, 0.5);
+  border: 2.5px solid #34d399;
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.4);
+}
+
+.flowchart-node .node-step-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.flowchart-node.bottleneck .node-step-tag {
+  color: #fca5a5;
+}
+
+.flowchart-node .node-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.flowchart-node .node-time {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.flowchart-node.bottleneck .node-time {
+  color: #ef4444;
+}
+
+.flowchart-arrow {
+  font-size: 1.4rem;
+  color: #64748b;
+  font-weight: 900;
+  user-select: none;
+}
+
+.mermaid-code-container {
+  background: #0f172a;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 16px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #38bdf8;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+
 
