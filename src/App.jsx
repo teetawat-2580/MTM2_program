@@ -520,8 +520,23 @@ function App() {
   const stdSec = standardTMU * 0.036;
   const stdMin = stdSec / 60;
   const stdHr = stdSec / 3600;
+  const unitsPerHour = stdSec > 0 ? (3600 / stdSec).toFixed(1) : '0';
 
   const isWomenWeightExceeded = gender === 'women' && parseFloat(weightKg) > 20;
+
+  const resetAllAllowanceFactors = () => {
+    setPosture('none');
+    setWeightKg('0');
+    setAtmosphericPct('0');
+    setBadLight('0');
+    setNoiseLevel('0');
+    setCloseAttention('0');
+    setMentalStrain('0');
+    setMonotony('0');
+    setTediousness('0');
+    setCompanyCustomPct('0');
+    showToast('🧹 All variable allowance factors reset to 0%!');
+  };
 
   const copyStandardTimeSummary = () => {
     const summaryText = `
@@ -544,17 +559,18 @@ Total Allowance %: ${totalAllowancePct}%
 • Tediousness: ${tediousPct}%
 • ${companyCustomLabel || 'Company Custom'}: ${companyPct}%
 
---- FINAL STANDARD TIME RESULT ---
-• Standard Time (TMU): ${standardTMU.toFixed(1)} TMU
+--- FINAL STANDARD TIME & CAPACITY ---
 • Standard Time (Seconds): ${stdSec.toFixed(2)} sec
 • Standard Time (Minutes): ${stdMin.toFixed(3)} min
-• Standard Time (Hours): ${stdHr.toFixed(5)} hr
+• Standard Time (TMU): ${standardTMU.toFixed(1)} TMU
+• Production Capacity: ${unitsPerHour} units/hour (pcs/hr)
 ============================================
 `.trim();
 
     navigator.clipboard.writeText(summaryText);
     showToast('📋 Standard Time summary copied to clipboard!');
   };
+
 
   return (
     <div className="glass-panel">
@@ -1268,6 +1284,10 @@ Total Allowance %: ${totalAllowancePct}%
               >
                 👩 Women (หญิง - 11% Base)
               </button>
+
+              <button className="btn btn-danger-sm btn-sm" onClick={resetAllAllowanceFactors} title="Reset all variable allowance factors to 0%">
+                🧹 Clear All Factors
+              </button>
             </div>
           </div>
 
@@ -1446,13 +1466,18 @@ Total Allowance %: ${totalAllowancePct}%
               <div>
                 <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.25rem' }}>⏱️ Standard Time Results & Breakdown</h2>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  Standard Time = Normal Time × (1 + Total Allowance % / 100)
+                  Standard Time = Normal Time × (1 + Total Allowance % / 100) | Capacity = 3,600 / Standard Time (sec)
                 </p>
               </div>
 
-              <button className="btn" onClick={copyStandardTimeSummary} title="Copy summary report">
-                📋 Copy Summary Report
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button className="btn btn-danger-sm btn-sm" onClick={resetAllAllowanceFactors} title="Reset all variable allowance factors to 0%">
+                  🧹 Clear Factors
+                </button>
+                <button className="btn" onClick={copyStandardTimeSummary} title="Copy summary report">
+                  📋 Copy Summary Report
+                </button>
+              </div>
             </div>
 
             <div className="results-metrics-grid">
@@ -1479,6 +1504,12 @@ Total Allowance %: ${totalAllowancePct}%
                 <span className="val">{stdSec.toFixed(2)} <small style={{ fontSize: '0.9rem' }}>sec</small></span>
                 <span className="sub">{stdMin.toFixed(3)} min ({standardTMU.toFixed(1)} TMU)</span>
               </div>
+
+              <div className="result-card" style={{ background: 'rgba(52, 211, 153, 0.15)', borderColor: 'rgba(52, 211, 153, 0.4)' }}>
+                <span className="label">Production Capacity</span>
+                <span className="val" style={{ color: '#4ade80' }}>{unitsPerHour} <small style={{ fontSize: '0.85rem' }}>units/hr</small></span>
+                <span className="sub">3,600 / {stdSec.toFixed(2)} sec</span>
+              </div>
             </div>
 
             {/* Time Unit Breakdown Chips */}
@@ -1499,7 +1530,12 @@ Total Allowance %: ${totalAllowancePct}%
                 <span className="u-val">{standardTMU.toFixed(1)}</span>
                 <span className="u-lbl">TMU</span>
               </div>
+              <div className="unit-chip" style={{ background: 'rgba(52, 211, 153, 0.15)', borderColor: 'rgba(52, 211, 153, 0.4)' }}>
+                <span className="u-val" style={{ color: '#4ade80' }}>{unitsPerHour}</span>
+                <span className="u-lbl">Units / Hour (pcs/hr)</span>
+              </div>
             </div>
+
 
             {/* Detailed Itemized Allowance Table */}
             <div className="ref-table-wrapper">
