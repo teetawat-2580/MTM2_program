@@ -1470,34 +1470,34 @@ Total Allowance %: ${totalAllowancePct}%
 
               <div className="result-card">
                 <span className="label">Allowance Time Added</span>
-                <span className="val" style={{ color: '#fbbf24' }}>+{allowanceTMU.toFixed(1)} <small style={{ fontSize: '0.9rem' }}>TMU</small></span>
-                <span className="sub">+{(allowanceTMU * 0.036).toFixed(2)} sec</span>
+                <span className="val" style={{ color: '#fbbf24' }}>+{(allowanceTMU * 0.036).toFixed(2)} <small style={{ fontSize: '0.9rem' }}>sec</small></span>
+                <span className="sub">+{(allowanceTMU).toFixed(1)} TMU equivalent</span>
               </div>
 
               <div className="result-card highlight">
                 <span className="label">Final Standard Time (T_std)</span>
-                <span className="val">{standardTMU.toFixed(1)} <small style={{ fontSize: '0.9rem' }}>TMU</small></span>
-                <span className="sub">{stdSec.toFixed(2)} sec</span>
+                <span className="val">{stdSec.toFixed(2)} <small style={{ fontSize: '0.9rem' }}>sec</small></span>
+                <span className="sub">{stdMin.toFixed(3)} min ({standardTMU.toFixed(1)} TMU)</span>
               </div>
             </div>
 
             {/* Time Unit Breakdown Chips */}
             <div className="time-breakdown-units">
               <div className="unit-chip">
-                <span className="u-val">{standardTMU.toFixed(1)}</span>
-                <span className="u-lbl">TMU</span>
-              </div>
-              <div className="unit-chip">
                 <span className="u-val">{stdSec.toFixed(2)}s</span>
-                <span className="u-lbl">Seconds</span>
+                <span className="u-lbl">Seconds (sec)</span>
               </div>
               <div className="unit-chip">
                 <span className="u-val">{stdMin.toFixed(3)}m</span>
-                <span className="u-lbl">Minutes</span>
+                <span className="u-lbl">Minutes (min)</span>
               </div>
               <div className="unit-chip">
                 <span className="u-val">{stdHr.toFixed(5)}h</span>
-                <span className="u-lbl">Hours</span>
+                <span className="u-lbl">Hours (hr)</span>
+              </div>
+              <div className="unit-chip">
+                <span className="u-val">{standardTMU.toFixed(1)}</span>
+                <span className="u-lbl">TMU</span>
               </div>
             </div>
 
@@ -1509,7 +1509,7 @@ Total Allowance %: ${totalAllowancePct}%
                     <th>Category</th>
                     <th>Selected Condition</th>
                     <th className="center">Allowance %</th>
-                    <th className="center">Added Time (TMU)</th>
+                    <th className="center">Added Time (Seconds)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1517,76 +1517,77 @@ Total Allowance %: ${totalAllowancePct}%
                     <td className="code-cell">1. Constant Allowance</td>
                     <td>Constant Allowance ({gender === 'men' ? 'Men 9%' : 'Women 11%'})</td>
                     <td className="tmu-val">+{constPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * constPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (constPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">2. Posture & Standing</td>
                     <td>{posture === 'standing' ? 'Standing Continuously' : posture === 'slightly_awkward' ? 'Slightly Awkward' : posture === 'awkward' ? 'Awkward (Bending)' : posture === 'very_awkward' ? 'Very Awkward' : 'Normal Sitting'}</td>
                     <td className="tmu-val">+{posturePct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * posturePct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (posturePct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">3. Weightlifting</td>
                     <td>{parseFloat(weightKg) > 0 ? `Weightlifting ${weightKg} kg` : 'No Weight'} {isWomenWeightExceeded ? '(⚠️ Exceeds Women Limit)' : ''}</td>
                     <td className="tmu-val">+{weightPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * weightPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (weightPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">4. Atmospheric</td>
                     <td>Atmospheric Conditions</td>
                     <td className="tmu-val">+{atmosPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * atmosPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (atmosPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">4. Lighting</td>
                     <td>{lightPct === 2 ? 'Well below recommended' : lightPct === 5 ? 'Quite inadequate/glare' : 'Normal Light'}</td>
                     <td className="tmu-val">+{lightPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * lightPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (lightPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">4. Noise Level</td>
                     <td>{noisePct === 2 ? 'Intermittent/loud' : noisePct === 5 ? 'Very loud/high-pitched' : 'Normal Noise'}</td>
                     <td className="tmu-val">+{noisePct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * noisePct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (noisePct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">5. Close Attention</td>
                     <td>{closeAttPct === 2 ? 'Fine' : closeAttPct === 5 ? 'Very fine/exacting' : 'Normal'}</td>
                     <td className="tmu-val">+{closeAttPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * closeAttPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (closeAttPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">5. Mental Strain</td>
                     <td>{mentalPct === 4 ? 'Complex' : mentalPct === 8 ? 'Very complex' : 'Normal'}</td>
                     <td className="tmu-val">+{mentalPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * mentalPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (mentalPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">5. Monotony</td>
                     <td>{monotonyPct === 1 ? 'Medium' : monotonyPct === 4 ? 'High' : 'Normal'}</td>
                     <td className="tmu-val">+{monotonyPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * monotonyPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (monotonyPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">5. Tediousness</td>
                     <td>{tediousPct === 2 ? 'Tedious' : tediousPct === 5 ? 'Very tedious' : 'Normal'}</td>
                     <td className="tmu-val">+{tediousPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * tediousPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (tediousPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr>
                     <td className="code-cell">6. Custom Company</td>
                     <td>{companyCustomLabel || 'Company Custom Factor'}</td>
                     <td className="tmu-val">+{companyPct}%</td>
-                    <td className="center">+{((effectiveNormalTMU * companyPct) / 100).toFixed(1)}</td>
+                    <td className="center">+{(effectiveNormalTMU * (companyPct / 100) * 0.036).toFixed(2)}s</td>
                   </tr>
                   <tr style={{ fontWeight: 'bold', background: 'rgba(59, 130, 246, 0.15)' }}>
                     <td colSpan="2" style={{ color: '#60a5fa' }}>TOTAL ALLOWANCE & TIME ADDED</td>
                     <td className="tmu-val" style={{ color: '#38bdf8', fontSize: '1rem' }}>+{totalAllowancePct}%</td>
-                    <td className="center" style={{ color: '#a78bfa', fontSize: '1rem' }}>+{allowanceTMU.toFixed(1)} TMU</td>
+                    <td className="center" style={{ color: '#fbbf24', fontSize: '1rem' }}>+{(allowanceTMU * 0.036).toFixed(2)} sec</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
           </div>
         </div>
       )}
