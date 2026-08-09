@@ -108,12 +108,14 @@ const CodeInput = ({ value, onChange }) => {
           type="number" 
           min="0.1" 
           step={selectedOpt?.hasProcessTime ? "0.1" : "1"}
-          value={parsed.modifier || (selectedOpt?.hasProcessTime ? '1' : '1')} 
+          value={parsed.modifier} 
           onChange={handleModifierChange} 
+          onFocus={(e) => e.target.select()}
           className={`modifier-input ${themeClass}`}
           placeholder={selectedOpt?.hasProcessTime ? "sec" : "kg"}
         />
       )}
+
     </div>
   );
 };
