@@ -559,12 +559,13 @@ Total Allowance %: ${totalAllowancePct}%
 • Tediousness: ${tediousPct}%
 • ${companyCustomLabel || 'Company Custom'}: ${companyPct}%
 
---- FINAL STANDARD TIME & CAPACITY ---
+--- FINAL STANDARD TIME & UPH ---
 • Standard Time (Seconds): ${stdSec.toFixed(2)} sec
 • Standard Time (Minutes): ${stdMin.toFixed(3)} min
 • Standard Time (TMU): ${standardTMU.toFixed(1)} TMU
-• Production Capacity: ${unitsPerHour} units/hour (pcs/hr)
+• UPH (Units Per Hour): ${unitsPerHour} UPH
 ============================================
+
 `.trim();
 
     navigator.clipboard.writeText(summaryText);
@@ -1506,8 +1507,8 @@ Total Allowance %: ${totalAllowancePct}%
               </div>
 
               <div className="result-card" style={{ background: 'rgba(52, 211, 153, 0.15)', borderColor: 'rgba(52, 211, 153, 0.4)' }}>
-                <span className="label">Production Capacity</span>
-                <span className="val" style={{ color: '#4ade80' }}>{unitsPerHour} <small style={{ fontSize: '0.85rem' }}>units/hr</small></span>
+                <span className="label">UPH (Units Per Hour)</span>
+                <span className="val" style={{ color: '#4ade80' }}>{unitsPerHour} <small style={{ fontSize: '0.85rem' }}>UPH</small></span>
                 <span className="sub">3,600 / {stdSec.toFixed(2)} sec</span>
               </div>
             </div>
@@ -1532,9 +1533,10 @@ Total Allowance %: ${totalAllowancePct}%
               </div>
               <div className="unit-chip" style={{ background: 'rgba(52, 211, 153, 0.15)', borderColor: 'rgba(52, 211, 153, 0.4)' }}>
                 <span className="u-val" style={{ color: '#4ade80' }}>{unitsPerHour}</span>
-                <span className="u-lbl">Units / Hour (pcs/hr)</span>
+                <span className="u-lbl">UPH (Units Per Hour)</span>
               </div>
             </div>
+
 
 
             {/* Detailed Itemized Allowance Table */}
