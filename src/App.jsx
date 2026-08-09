@@ -161,12 +161,29 @@ function App() {
   });
   const [currentProjectId, setCurrentProjectId] = useState(null);
   const [projectName, setProjectName] = useState('Process Plan #1');
-  const [toastMessage, setToastMessage] = useState('');
+  // Standard Time & Allowance Calculator States (ILO Standards)
+  const [gender, setGender] = useState('men'); // 'men' | 'women'
+  const [useSyncMTM, setUseSyncMTM] = useState(true);
+  const [normalTimeVal, setNormalTimeVal] = useState('1000');
+  const [normalTimeUnit, setNormalTimeUnit] = useState('TMU'); // 'TMU' | 'sec' | 'min' | 'hr'
+
+  const [posture, setPosture] = useState('none');
+  const [weightKg, setWeightKg] = useState('0');
+  const [atmosphericPct, setAtmosphericPct] = useState('0');
+  const [badLight, setBadLight] = useState('0');
+  const [noiseLevel, setNoiseLevel] = useState('0');
+  const [closeAttention, setCloseAttention] = useState('0');
+  const [mentalStrain, setMentalStrain] = useState('0');
+  const [monotony, setMonotony] = useState('0');
+  const [tediousness, setTediousness] = useState('0');
+  const [companyCustomPct, setCompanyCustomPct] = useState('0');
+  const [companyCustomLabel, setCompanyCustomLabel] = useState('Company Delay / Safety PPE');
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
 
   const calculateRow = useCallback((row) => {
     const lhTMU = calculateCodeTMU(row.lhCode) * (parseFloat(row.lhFreq) || 0);
@@ -432,6 +449,110 @@ function App() {
     setTotalTMU(total);
   }, [rows]);
 
+  // ILO Allowance Calculation Logic
+  const getConstantAllowancePct = (g) => (g === 'women' ? 11 : 9);
+
+  const getPostureAllowancePct = (pKey, g) => {
+    switch (pKey) {
+      case 'standing': return g === 'women' ? 4 : 2;
+      case 'slightly_awkward': return g === 'women' ? 1 : 0;
+      case 'awkward': return g === 'women' ? 3 : 2;
+      case 'very_awkward': return g === 'women' ? 7 : 7;
+      default: return 0;
+    }
+  };
+
+  const getWeightAllowancePct = (w, g) => {
+    const val = parseFloat(w) || 0;
+    if (val <= 0) return 0;
+    if (g === 'men') {
+      if (val <= 2.5) return 0;
+      if (val <= 5.0) return 1;
+      if (val <= 10.0) return 3;
+      if (val <= 12.5) return 4;
+      if (val <= 15.0) return 6;
+      if (val <= 20.0) return 10;
+      const extra = Math.min(50, val) - 20;
+      const scaled = 10 + Math.round((extra / 30) * 48);
+      return Math.min(58, scaled);
+    } else {
+      if (val <= 2.5) return 1;
+      if (val <= 5.0) return 2;
+      if (val <= 10.0) return 4;
+      if (val <= 12.5) return 6;
+      if (val <= 15.0) return 9;
+      if (val <= 20.0) return 15;
+      return 15;
+    }
+  };
+
+  const constPct = getConstantAllowancePct(gender);
+  const posturePct = getPostureAllowancePct(posture, gender);
+  const weightPct = getWeightAllowancePct(weightKg, gender);
+  const atmosPct = Math.min(100, Math.max(0, parseFloat(atmosphericPct) || 0));
+  const lightPct = parseFloat(badLight) || 0;
+  const noisePct = parseFloat(noiseLevel) || 0;
+  const closeAttPct = parseFloat(closeAttention) || 0;
+  const mentalPct = parseFloat(mentalStrain) || 0;
+  const monotonyPct = parseFloat(monotony) || 0;
+  const tediousPct = parseFloat(tediousness) || 0;
+  const companyPct = parseFloat(companyCustomPct) || 0;
+
+  const totalAllowancePct = constPct + posturePct + weightPct + atmosPct + lightPct + noisePct + closeAttPct + mentalPct + monotonyPct + tediousPct + companyPct;
+
+  let effectiveNormalTMU = 0;
+  if (useSyncMTM) {
+    effectiveNormalTMU = totalTMU;
+  } else {
+    const val = parseFloat(normalTimeVal) || 0;
+    if (normalTimeUnit === 'TMU') effectiveNormalTMU = val;
+    else if (normalTimeUnit === 'sec') effectiveNormalTMU = val / 0.036;
+    else if (normalTimeUnit === 'min') effectiveNormalTMU = val * 1666.66667;
+    else if (normalTimeUnit === 'hr') effectiveNormalTMU = val * 100000;
+  }
+
+  const standardTMU = effectiveNormalTMU * (1 + totalAllowancePct / 100);
+  const allowanceTMU = standardTMU - effectiveNormalTMU;
+
+  const stdSec = standardTMU * 0.036;
+  const stdMin = stdSec / 60;
+  const stdHr = stdSec / 3600;
+
+  const isWomenWeightExceeded = gender === 'women' && parseFloat(weightKg) > 20;
+
+  const copyStandardTimeSummary = () => {
+    const summaryText = `
+=== ILO STANDARD TIME & ALLOWANCE REPORT ===
+Project Name: ${projectName || 'Untitled'}
+Gender Operator: ${gender === 'men' ? 'Men (ชาย)' : 'Women (หญิง)'}
+Normal Time: ${effectiveNormalTMU.toFixed(1)} TMU (${(effectiveNormalTMU * 0.036).toFixed(2)}s)
+Total Allowance %: ${totalAllowancePct}%
+
+--- ALLOWANCE BREAKDOWN ---
+• Constant Allowance: ${constPct}% (Personal + Fatigue)
+• Posture & Standing: ${posturePct}%
+• Weightlifting (${weightKg || 0} kg): ${weightPct}% ${isWomenWeightExceeded ? '[⚠️ Exceeds ILO Limit >20kg]' : ''}
+• Atmospheric Conditions: ${atmosPct}%
+• Lighting Condition: ${lightPct}%
+• Noise Level: ${noisePct}%
+• Close Attention: ${closeAttPct}%
+• Mental Strain: ${mentalPct}%
+• Monotony: ${monotonyPct}%
+• Tediousness: ${tediousPct}%
+• ${companyCustomLabel || 'Company Custom'}: ${companyPct}%
+
+--- FINAL STANDARD TIME RESULT ---
+• Standard Time (TMU): ${standardTMU.toFixed(1)} TMU
+• Standard Time (Seconds): ${stdSec.toFixed(2)} sec
+• Standard Time (Minutes): ${stdMin.toFixed(3)} min
+• Standard Time (Hours): ${stdHr.toFixed(5)} hr
+============================================
+`.trim();
+
+    navigator.clipboard.writeText(summaryText);
+    showToast('📋 Standard Time summary copied to clipboard!');
+  };
+
   return (
     <div className="glass-panel">
       {toastMessage && (
@@ -457,8 +578,15 @@ function App() {
           >
             Simultaneous & Reference Tables
           </button>
+          <button 
+            className={`tab-btn ${activeTab === 'std-time' ? 'active' : ''}`}
+            onClick={() => setActiveTab('std-time')}
+          >
+            ⏱️ Standard Time & ILO Allowance
+          </button>
         </div>
       </div>
+
 
       {/* Project Management Bar */}
       <div className="project-bar">
@@ -1079,9 +1207,390 @@ function App() {
           </div>
         </div>
       )}
+
+      {activeTab === 'std-time' && (
+        <div className="std-time-container">
+
+          {/* Top Bar Controls */}
+          <div className="std-top-bar">
+            <div className="std-time-input-group">
+              <label>Normal Time (T_normal):</label>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button 
+                  className={`btn-sm ${useSyncMTM ? 'btn' : 'btn-secondary'}`}
+                  onClick={() => setUseSyncMTM(!useSyncMTM)}
+                  title="Toggle sync from main MTM-2 calculator"
+                >
+                  {useSyncMTM ? '🔗 Synced from MTM-2' : '✏️ Custom Input'}
+                </button>
+
+                {!useSyncMTM && (
+                  <>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      step="any"
+                      value={normalTimeVal} 
+                      onChange={(e) => setNormalTimeVal(e.target.value)} 
+                      className="std-num-input"
+                      placeholder="Normal time"
+                    />
+                    <select 
+                      value={normalTimeUnit} 
+                      onChange={(e) => setNormalTimeUnit(e.target.value)}
+                      className="std-unit-select"
+                    >
+                      <option value="TMU">TMU</option>
+                      <option value="sec">Seconds (sec)</option>
+                      <option value="min">Minutes (min)</option>
+                      <option value="hr">Hours (hr)</option>
+                    </select>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="gender-toggle-group">
+              <span className="project-label">Operator Gender:</span>
+              <button 
+                className={`gender-btn men ${gender === 'men' ? 'active' : ''}`}
+                onClick={() => setGender('men')}
+              >
+                👨 Men (ชาย - 9% Base)
+              </button>
+              <button 
+                className={`gender-btn women ${gender === 'women' ? 'active' : ''}`}
+                onClick={() => setGender('women')}
+              >
+                👩 Women (หญิง - 11% Base)
+              </button>
+            </div>
+          </div>
+
+          {/* 6 Category Allowance Cards Grid */}
+          <div className="std-cards-grid">
+            {/* 1. Constant Allowance */}
+            <div className="std-allowance-card">
+              <h3>
+                1. Constant Allowance
+                <span className="badge-percent">+{constPct}%</span>
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Applied to base time ({gender === 'men' ? 'Men' : 'Women'}):
+              </p>
+              <ul style={{ fontSize: '0.85rem', paddingLeft: '18px', margin: 0, color: 'var(--text-primary)' }}>
+                <li>Personal Needs: <strong>{gender === 'men' ? '5%' : '7%'}</strong></li>
+                <li>Basic Fatigue: <strong>4%</strong></li>
+              </ul>
+            </div>
+
+            {/* 2. Posture & Standing */}
+            <div className="std-allowance-card">
+              <h3>
+                2. Posture & Standing
+                <span className="badge-percent">+{posturePct}%</span>
+              </h3>
+              <div className="form-field">
+                <label>Working Posture / Position:</label>
+                <select value={posture} onChange={(e) => setPosture(e.target.value)}>
+                  <option value="none">Normal Sitting (นั่งปกติ - 0%)</option>
+                  <option value="standing">Standing continuously (ยืนทำงานต่อเนื่อง - {gender === 'women' ? '4%' : '2%'})</option>
+                  <option value="slightly_awkward">Slightly awkward (เอียงเล็กน้อย - {gender === 'women' ? '1%' : '0%'})</option>
+                  <option value="awkward">Awkward / Bending (ก้มตัว/เอียงมาก - {gender === 'women' ? '3%' : '2%'})</option>
+                  <option value="very_awkward">Very awkward / Lying / Stretching (นอน/เอื้อมสุดตัว - 7%)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 3. Weightlifting */}
+            <div className="std-allowance-card">
+              <h3>
+                3. Weightlifting & Force
+                <span className="badge-percent">+{weightPct}%</span>
+              </h3>
+              <div className="form-field">
+                <label>Handled Weight / Force (kg):</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  max="50" 
+                  step="0.5"
+                  value={weightKg} 
+                  onChange={(e) => setWeightKg(e.target.value)}
+                  placeholder="Weight in kg..."
+                />
+              </div>
+              {isWomenWeightExceeded && (
+                <div className="weight-alert-banner">
+                  ⚠️ Exceeds ILO Recommended Weight Limit for Women (&gt; 20 kg). Heavy lifting above 20kg is not recommended.
+                </div>
+              )}
+              {gender === 'men' && parseFloat(weightKg) > 20 && (
+                <div style={{ fontSize: '0.78rem', color: '#60a5fa' }}>
+                  ℹ️ Weight &gt; 20kg linearly scales up to 58% at 50kg per ILO standard.
+                </div>
+              )}
+            </div>
+
+            {/* 4. Environmental Factors */}
+            <div className="std-allowance-card">
+              <h3>
+                4. Environmental Factors
+                <span className="badge-percent">+{atmosPct + lightPct + noisePct}%</span>
+              </h3>
+              <div className="form-field">
+                <label>Atmospheric Conditions (%):</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  max="100" 
+                  value={atmosphericPct} 
+                  onChange={(e) => setAtmosphericPct(e.target.value)}
+                  placeholder="0% - 100%"
+                />
+              </div>
+              <div className="form-field">
+                <label>Bad Light (สภาพแสงสว่าง):</label>
+                <select value={badLight} onChange={(e) => setBadLight(e.target.value)}>
+                  <option value="0">Normal / Adequate (แสงสว่างพอดี - 0%)</option>
+                  <option value="2">Well below recommended (ต่ำกว่ามาตรฐาน - 2%)</option>
+                  <option value="5">Quite inadequate / Glare (มืดมาก/แสงสะท้อน - 5%)</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Noise Level (ระดับเสียงรบกวน):</label>
+                <select value={noiseLevel} onChange={(e) => setNoiseLevel(e.target.value)}>
+                  <option value="0">Normal / Quiet (เสียงปกติ - 0%)</option>
+                  <option value="2">Intermittent / Loud (เสียงดังเป็นพักๆ - 2%)</option>
+                  <option value="5">Very loud / High-pitched (เสียงดังมาก/แหลมสูง - 5%)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 5. Mental and Visual Strain */}
+            <div className="std-allowance-card">
+              <h3>
+                5. Mental & Visual Strain
+                <span className="badge-percent">+{closeAttPct + mentalPct + monotonyPct + tediousPct}%</span>
+              </h3>
+              <div className="form-field">
+                <label>Close Attention (ความเพ่งสายตา):</label>
+                <select value={closeAttention} onChange={(e) => setCloseAttention(e.target.value)}>
+                  <option value="0">Normal (ปกติ - 0%)</option>
+                  <option value="2">Fine (เพ่งสายตาวิจิตร - 2%)</option>
+                  <option value="5">Very fine / Exacting (เพ่งละเอียดสูงสุด - 5%)</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Mental Strain (ความเครียดสมอง):</label>
+                <select value={mentalStrain} onChange={(e) => setMentalStrain(e.target.value)}>
+                  <option value="0">Normal (ปกติ - 0%)</option>
+                  <option value="4">Complex (ซับซ้อน - 4%)</option>
+                  <option value="8">Very complex (ซับซ้อนมาก - 8%)</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Monotony (ความซ้ำซากจำเจ):</label>
+                <select value={monotony} onChange={(e) => setMonotony(e.target.value)}>
+                  <option value="0">Normal (ปกติ - 0%)</option>
+                  <option value="1">Medium (ปานกลาง - 1%)</option>
+                  <option value="4">High (สูง - 4%)</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Tediousness (ความน่าเบื่อหน่าย):</label>
+                <select value={tediousness} onChange={(e) => setTediousness(e.target.value)}>
+                  <option value="0">Normal (ปกติ - 0%)</option>
+                  <option value="2">Tedious (น่าเบื่อ - 2%)</option>
+                  <option value="5">Very tedious (น่าเบื่อมาก - 5%)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 6. Self-Customized Company Factor */}
+            <div className="std-allowance-card">
+              <h3>
+                6. Custom Company Allowance
+                <span className="badge-percent">+{companyPct}%</span>
+              </h3>
+              <div className="form-field">
+                <label>Custom Reason / Description:</label>
+                <input 
+                  type="text" 
+                  value={companyCustomLabel} 
+                  onChange={(e) => setCompanyCustomLabel(e.target.value)}
+                  placeholder="Reason (e.g. PPE, Setup delay...)"
+                />
+              </div>
+              <div className="form-field">
+                <label>Custom Allowance (%):</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="0.5"
+                  value={companyCustomPct} 
+                  onChange={(e) => setCompanyCustomPct(e.target.value)}
+                  placeholder="Custom %..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Results Dashboard & Detailed Breakdown Table */}
+          <div className="std-results-dashboard">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.25rem' }}>⏱️ Standard Time Results & Breakdown</h2>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  Standard Time = Normal Time × (1 + Total Allowance % / 100)
+                </p>
+              </div>
+
+              <button className="btn" onClick={copyStandardTimeSummary} title="Copy summary report">
+                📋 Copy Summary Report
+              </button>
+            </div>
+
+            <div className="results-metrics-grid">
+              <div className="result-card primary">
+                <span className="label">Normal Time (T_normal)</span>
+                <span className="val">{effectiveNormalTMU.toFixed(1)} <small style={{ fontSize: '0.9rem' }}>TMU</small></span>
+                <span className="sub">{(effectiveNormalTMU * 0.036).toFixed(2)} sec</span>
+              </div>
+
+              <div className="result-card">
+                <span className="label">Total Allowance %</span>
+                <span className="val" style={{ color: '#38bdf8' }}>+{totalAllowancePct}%</span>
+                <span className="sub">ILO Standard Sum</span>
+              </div>
+
+              <div className="result-card">
+                <span className="label">Allowance Time Added</span>
+                <span className="val" style={{ color: '#fbbf24' }}>+{allowanceTMU.toFixed(1)} <small style={{ fontSize: '0.9rem' }}>TMU</small></span>
+                <span className="sub">+{(allowanceTMU * 0.036).toFixed(2)} sec</span>
+              </div>
+
+              <div className="result-card highlight">
+                <span className="label">Final Standard Time (T_std)</span>
+                <span className="val">{standardTMU.toFixed(1)} <small style={{ fontSize: '0.9rem' }}>TMU</small></span>
+                <span className="sub">{stdSec.toFixed(2)} sec</span>
+              </div>
+            </div>
+
+            {/* Time Unit Breakdown Chips */}
+            <div className="time-breakdown-units">
+              <div className="unit-chip">
+                <span className="u-val">{standardTMU.toFixed(1)}</span>
+                <span className="u-lbl">TMU</span>
+              </div>
+              <div className="unit-chip">
+                <span className="u-val">{stdSec.toFixed(2)}s</span>
+                <span className="u-lbl">Seconds</span>
+              </div>
+              <div className="unit-chip">
+                <span className="u-val">{stdMin.toFixed(3)}m</span>
+                <span className="u-lbl">Minutes</span>
+              </div>
+              <div className="unit-chip">
+                <span className="u-val">{stdHr.toFixed(5)}h</span>
+                <span className="u-lbl">Hours</span>
+              </div>
+            </div>
+
+            {/* Detailed Itemized Allowance Table */}
+            <div className="ref-table-wrapper">
+              <table className="ref-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Selected Condition</th>
+                    <th className="center">Allowance %</th>
+                    <th className="center">Added Time (TMU)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="code-cell">1. Constant Allowance</td>
+                    <td>Constant Allowance ({gender === 'men' ? 'Men 9%' : 'Women 11%'})</td>
+                    <td className="tmu-val">+{constPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * constPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">2. Posture & Standing</td>
+                    <td>{posture === 'standing' ? 'Standing Continuously' : posture === 'slightly_awkward' ? 'Slightly Awkward' : posture === 'awkward' ? 'Awkward (Bending)' : posture === 'very_awkward' ? 'Very Awkward' : 'Normal Sitting'}</td>
+                    <td className="tmu-val">+{posturePct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * posturePct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">3. Weightlifting</td>
+                    <td>{parseFloat(weightKg) > 0 ? `Weightlifting ${weightKg} kg` : 'No Weight'} {isWomenWeightExceeded ? '(⚠️ Exceeds Women Limit)' : ''}</td>
+                    <td className="tmu-val">+{weightPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * weightPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">4. Atmospheric</td>
+                    <td>Atmospheric Conditions</td>
+                    <td className="tmu-val">+{atmosPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * atmosPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">4. Lighting</td>
+                    <td>{lightPct === 2 ? 'Well below recommended' : lightPct === 5 ? 'Quite inadequate/glare' : 'Normal Light'}</td>
+                    <td className="tmu-val">+{lightPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * lightPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">4. Noise Level</td>
+                    <td>{noisePct === 2 ? 'Intermittent/loud' : noisePct === 5 ? 'Very loud/high-pitched' : 'Normal Noise'}</td>
+                    <td className="tmu-val">+{noisePct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * noisePct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">5. Close Attention</td>
+                    <td>{closeAttPct === 2 ? 'Fine' : closeAttPct === 5 ? 'Very fine/exacting' : 'Normal'}</td>
+                    <td className="tmu-val">+{closeAttPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * closeAttPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">5. Mental Strain</td>
+                    <td>{mentalPct === 4 ? 'Complex' : mentalPct === 8 ? 'Very complex' : 'Normal'}</td>
+                    <td className="tmu-val">+{mentalPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * mentalPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">5. Monotony</td>
+                    <td>{monotonyPct === 1 ? 'Medium' : monotonyPct === 4 ? 'High' : 'Normal'}</td>
+                    <td className="tmu-val">+{monotonyPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * monotonyPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">5. Tediousness</td>
+                    <td>{tediousPct === 2 ? 'Tedious' : tediousPct === 5 ? 'Very tedious' : 'Normal'}</td>
+                    <td className="tmu-val">+{tediousPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * tediousPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="code-cell">6. Custom Company</td>
+                    <td>{companyCustomLabel || 'Company Custom Factor'}</td>
+                    <td className="tmu-val">+{companyPct}%</td>
+                    <td className="center">+{((effectiveNormalTMU * companyPct) / 100).toFixed(1)}</td>
+                  </tr>
+                  <tr style={{ fontWeight: 'bold', background: 'rgba(59, 130, 246, 0.15)' }}>
+                    <td colSpan="2" style={{ color: '#60a5fa' }}>TOTAL ALLOWANCE & TIME ADDED</td>
+                    <td className="tmu-val" style={{ color: '#38bdf8', fontSize: '1rem' }}>+{totalAllowancePct}%</td>
+                    <td className="center" style={{ color: '#a78bfa', fontSize: '1rem' }}>+{allowanceTMU.toFixed(1)} TMU</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 export default App;
 
