@@ -354,16 +354,34 @@ select option {
   animation: slideUp 0.3s ease-out forwards;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.storage-info-note {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: -10px;
+  margin-bottom: 20px;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.45;
 }
+
+.storage-info-note strong {
+  color: #60a5fa;
+}
+
+.storage-info-note code {
+  background: rgba(15, 23, 42, 0.8);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #a78bfa;
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+
 
 
 /* Mobile Motion Cards Container */

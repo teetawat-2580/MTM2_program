@@ -504,6 +504,16 @@ function App() {
       </div>
 
 
+      {/* LocalStorage Location Info Note */}
+      <div className="storage-info-note">
+        <span>💡</span>
+        <span>
+          <strong>Storage Info (ตำแหน่งที่เก็บบันทึก):</strong> Projects saved with <strong>💾 Save</strong> are stored inside your browser's internal Local Storage under key <code>mtm2_saved_projects</code>. To create permanent backup files on your hard drive or move projects to another device, use <strong>📥 Export (.json)</strong>.
+        </span>
+      </div>
+
+
+
       {activeTab === 'calculator' && (
         <>
           {showTrainingBanner && (
