@@ -74,15 +74,20 @@ export const calculateCodeTMU = (code) => {
   
   const upperCode = code.toUpperCase();
   
-  // Check weight codes first (GW1, PW5, etc.)
+  // Check weight codes (GW & PW)
   if (upperCode.startsWith('GW')) {
     const weight = parseInt(upperCode.substring(2)) || 0;
-    return weight * 1; 
+    if (weight < 2) return 0; // Minimum threshold >= 2kg
+    const cappedWeight = Math.min(weight, 20); // Maximum weight limit 20kg
+    return cappedWeight * 1; // 1 TMU per 1 kg
   }
   if (upperCode.startsWith('PW')) {
     const weight = parseInt(upperCode.substring(2)) || 0;
-    return weight * 1; // "PW 5kg - 1" -> usually 1 per kg up to 5kg limit.
+    if (weight < 5) return 0; // Minimum threshold >= 5kg
+    const cappedWeight = Math.min(weight, 20); // Maximum weight limit 20kg
+    return Math.floor(cappedWeight / 5); // 1 TMU per 5 kg
   }
+
 
   // Check single actions
   if (singleActionTable[upperCode] !== undefined) {

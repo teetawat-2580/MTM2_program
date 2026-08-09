@@ -923,34 +923,39 @@ function App() {
                   <thead>
                     <tr>
                       <th>Code</th>
-                      <th>Motion / Rule</th>
-                      <th className="center">TMU Formula</th>
-                      <th>Description</th>
+                      <th>Motion / Feature</th>
+                      <th className="center">TMU Allowance</th>
+                      <th className="center">Threshold / Limit</th>
+                      <th>Purpose & Description</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td className="code-cell">GW</td>
                       <td>Get Weight (แรงยกสถิต)</td>
-                      <td className="tmu-val">+1 TMU / kg</td>
-                      <td>คำนวณ TMU เพิ่มตามน้ำหนักวัตถุ (1 TMU ต่อ 1 กิโลกรัม)</td>
+                      <td className="tmu-val">1 TMU per 1 kg</td>
+                      <td className="center">≥ 2 kg (Max 20 kg)</td>
+                      <td>ชดเชยแรงกล้ามเนื้อที่ใช้ในการเข้าควบคุมวัตถุหนัก (1 TMU / 2 lbs)</td>
                     </tr>
                     <tr>
                       <td className="code-cell">PW</td>
                       <td>Put Weight (แรงยกระหว่างเคลื่อนที่)</td>
-                      <td className="tmu-val">+1 TMU / kg</td>
-                      <td>คำนวณ TMU เพิ่มตามน้ำหนักวัตถุระหว่างการวาง</td>
+                      <td className="tmu-val">1 TMU per 5 kg</td>
+                      <td className="center">≥ 5 kg (Max 20 kg)</td>
+                      <td>ชดเชยการชะลอตัวของการเคลื่อนที่ขณะเคลื่อนย้าย/วางวัตถุหนัก (1 TMU / 10 lbs)</td>
                     </tr>
                     <tr>
                       <td className="code-cell"><span className="badge-tag">Rule</span></td>
                       <td>Simultaneous Limit</td>
                       <td className="tmu-val">&lt; 2 kg</td>
-                      <td>เคลื่อนที่พร้อมกันสองมือได้เฉพาะเมื่อน้ำหนักน้อยกว่า 2 กิโลกรัม</td>
+                      <td className="center">Threshold &lt; 2 kg</td>
+                      <td>เคลื่อนที่พร้อมกันสองมือได้เฉพาะเมื่อน้ำหนักวัตถุน้อยกว่า 2 kg</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
+
 
             {/* Other Single Motions */}
             <div className="ref-section">
