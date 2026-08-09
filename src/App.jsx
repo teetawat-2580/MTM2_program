@@ -641,7 +641,34 @@ Total Allowance %: ${totalAllowancePct}%
   const rawDailyCapacity = calcUPH * (calcYieldPct / 100) * calcWorkingHours * (calcUtilPct / 100) * (calcEfficiencyPct / 100);
   const finalDailyCapacityParts = Math.round(rawDailyCapacity);
 
+  const resetDailyCapacityInputs = () => {
+    setUphMode('sync');
+    setUphDirect('500');
+    setUphCycleTimeSec('12');
+
+    setYieldMode('direct');
+    setYieldDirect('98');
+    setYieldTotalParts('1000');
+    setYieldDefectiveParts('20');
+
+    setHoursMode('direct');
+    setHoursDirect('7.5');
+    setShiftMinutes('480');
+    setBreakMinutes('30');
+
+    setUtilMode('direct');
+    setUtilDirect('85');
+    setActualPartsPerDay('850');
+    setMaxSpeedPartsPerDay('1000');
+
+    setCustomEfficiencyPct('100');
+    setCustomEfficiencyLabel('Operator Efficiency / OEE');
+
+    showToast('🧹 Daily Capacity inputs reset to default values!');
+  };
+
   const copyDailyCapacityReport = () => {
+
     const reportText = `
 === DAILY PRODUCTION CAPACITY REPORT (GOOD PARTS) ===
 Project Name: ${projectName || 'Untitled'}
@@ -1739,10 +1766,16 @@ ${calcUPH.toFixed(1)} UPH × ${(calcYieldPct / 100).toFixed(4)} (Yield) × ${cal
               </p>
             </div>
 
-            <button className="btn" onClick={copyDailyCapacityReport} title="Copy full report to clipboard">
-              📋 Copy Capacity Report
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn btn-danger-sm btn-sm" onClick={resetDailyCapacityInputs} title="Reset all capacity inputs to default values">
+                🧹 Reset Inputs
+              </button>
+              <button className="btn" onClick={copyDailyCapacityReport} title="Copy full report to clipboard">
+                📋 Copy Capacity Report
+              </button>
+            </div>
           </div>
+
 
           {/* 5 Card Controls */}
           <div className="std-cards-grid">
@@ -2060,10 +2093,16 @@ ${calcUPH.toFixed(1)} UPH × ${(calcYieldPct / 100).toFixed(4)} (Yield) × ${cal
                 </span>
               </div>
 
-              <button className="btn" onClick={copyDailyCapacityReport} title="Copy detailed capacity report">
-                📋 Copy Full Capacity Report
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button className="btn btn-danger-sm btn-sm" onClick={resetDailyCapacityInputs} title="Reset all capacity inputs to default values">
+                  🧹 Reset Inputs
+                </button>
+                <button className="btn" onClick={copyDailyCapacityReport} title="Copy detailed capacity report">
+                  📋 Copy Full Capacity Report
+                </button>
+              </div>
             </div>
+
 
             {/* Verification Math Chain */}
             <div className="equation-chain">
