@@ -181,10 +181,34 @@ function App() {
   const [companyCustomPct, setCompanyCustomPct] = useState('0');
   const [companyCustomLabel, setCompanyCustomLabel] = useState('Company Delay / Safety PPE');
 
+  // Daily Production Capacity Calculator States
+  const [uphMode, setUphMode] = useState('sync'); // 'sync' | 'direct' | 'sub'
+  const [uphDirect, setUphDirect] = useState('500');
+  const [uphCycleTimeSec, setUphCycleTimeSec] = useState('12');
+
+  const [yieldMode, setYieldMode] = useState('direct'); // 'direct' | 'sub'
+  const [yieldDirect, setYieldDirect] = useState('98');
+  const [yieldTotalParts, setYieldTotalParts] = useState('1000');
+  const [yieldDefectiveParts, setYieldDefectiveParts] = useState('20');
+
+  const [hoursMode, setHoursMode] = useState('direct'); // 'direct' | 'sub'
+  const [hoursDirect, setHoursDirect] = useState('7.5');
+  const [shiftMinutes, setShiftMinutes] = useState('480');
+  const [breakMinutes, setBreakMinutes] = useState('30');
+
+  const [utilMode, setUtilMode] = useState('direct'); // 'direct' | 'sub'
+  const [utilDirect, setUtilDirect] = useState('85');
+  const [actualPartsPerDay, setActualPartsPerDay] = useState('850');
+  const [maxSpeedPartsPerDay, setMaxSpeedPartsPerDay] = useState('1000');
+
+  const [customEfficiencyPct, setCustomEfficiencyPct] = useState('100');
+  const [customEfficiencyLabel, setCustomEfficiencyLabel] = useState('Operator Efficiency / OEE');
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
 
 
 
@@ -573,6 +597,73 @@ Total Allowance %: ${totalAllowancePct}%
   };
 
 
+  // Daily Capacity Effective Calculations
+  let calcUPH = 0;
+  if (uphMode === 'sync') {
+    calcUPH = parseFloat(unitsPerHour) || 0;
+  } else if (uphMode === 'direct') {
+    calcUPH = parseFloat(uphDirect) || 0;
+  } else if (uphMode === 'sub') {
+    const ct = parseFloat(uphCycleTimeSec) || 0;
+    calcUPH = ct > 0 ? 3600 / ct : 0;
+  }
+
+  let calcYieldPct = 0;
+  if (yieldMode === 'direct') {
+    calcYieldPct = parseFloat(yieldDirect) || 0;
+  } else if (yieldMode === 'sub') {
+    const tot = parseFloat(yieldTotalParts) || 0;
+    const def = parseFloat(yieldDefectiveParts) || 0;
+    calcYieldPct = tot > 0 ? (((tot - def) / tot) * 100) : 0;
+  }
+
+  let calcWorkingHours = 0;
+  if (hoursMode === 'direct') {
+    calcWorkingHours = parseFloat(hoursDirect) || 0;
+  } else if (hoursMode === 'sub') {
+    const shift = parseFloat(shiftMinutes) || 0;
+    const brk = parseFloat(breakMinutes) || 0;
+    calcWorkingHours = Math.max(0, (shift - brk) / 60);
+  }
+
+  let calcUtilPct = 0;
+  if (utilMode === 'direct') {
+    calcUtilPct = parseFloat(utilDirect) || 0;
+  } else if (utilMode === 'sub') {
+    const act = parseFloat(actualPartsPerDay) || 0;
+    const maxp = parseFloat(maxSpeedPartsPerDay) || 0;
+    calcUtilPct = maxp > 0 ? ((act / maxp) * 100) : 0;
+  }
+
+  const calcEfficiencyPct = parseFloat(customEfficiencyPct) || 100;
+
+  // Master Equation: Daily Capacity (Good Parts) = UPH * (Yield/100) * Working Hours * (Util/100) * (Eff/100)
+  const rawDailyCapacity = calcUPH * (calcYieldPct / 100) * calcWorkingHours * (calcUtilPct / 100) * (calcEfficiencyPct / 100);
+  const finalDailyCapacityParts = Math.round(rawDailyCapacity);
+
+  const copyDailyCapacityReport = () => {
+    const reportText = `
+=== DAILY PRODUCTION CAPACITY REPORT (GOOD PARTS) ===
+Project Name: ${projectName || 'Untitled'}
+Final Daily Capacity: ${finalDailyCapacityParts.toLocaleString()} good parts / day
+
+--- MASTER EQUATION VARIABLES ---
+1. UPH (Units Per Hour): ${calcUPH.toFixed(1)} UPH [Mode: ${uphMode}]
+2. Yield: ${calcYieldPct.toFixed(2)}% [Mode: ${yieldMode}]
+3. Working Hours: ${calcWorkingHours.toFixed(2)} hrs [Mode: ${hoursMode}]
+4. M/C Utilization: ${calcUtilPct.toFixed(2)}% [Mode: ${utilMode}]
+5. ${customEfficiencyLabel || 'Custom Efficiency'}: ${calcEfficiencyPct}%
+
+--- VERIFICATION MATH ---
+${calcUPH.toFixed(1)} UPH × ${(calcYieldPct / 100).toFixed(4)} (Yield) × ${calcWorkingHours.toFixed(2)} hrs × ${(calcUtilPct / 100).toFixed(4)} (Util) × ${(calcEfficiencyPct / 100).toFixed(4)} (Eff)
+= ${rawDailyCapacity.toFixed(2)} ➔ ${finalDailyCapacityParts.toLocaleString()} Good Parts/Day
+======================================================
+`.trim();
+
+    navigator.clipboard.writeText(reportText);
+    showToast('📋 Daily Capacity report copied to clipboard!');
+  };
+
   return (
     <div className="glass-panel">
       {toastMessage && (
@@ -604,8 +695,15 @@ Total Allowance %: ${totalAllowancePct}%
           >
             ⏱️ Standard Time & ILO Allowance
           </button>
+          <button 
+            className={`tab-btn ${activeTab === 'daily-capacity' ? 'active' : ''}`}
+            onClick={() => setActiveTab('daily-capacity')}
+          >
+            🏭 Daily Capacity (Good Parts)
+          </button>
         </div>
       </div>
+
 
 
       {/* Project Management Bar */}
@@ -1629,6 +1727,363 @@ Total Allowance %: ${totalAllowancePct}%
           </div>
         </div>
       )}
+
+      {activeTab === 'daily-capacity' && (
+        <div className="std-time-container">
+          {/* Header Card */}
+          <div className="std-top-bar">
+            <div>
+              <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.25rem' }}>🏭 Daily Production Capacity Calculator (Good Parts)</h2>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                Master Equation: Daily Capacity = UPH × (Yield % / 100) × Working Hours × (M/C Utilization % / 100) × (Custom Efficiency % / 100)
+              </p>
+            </div>
+
+            <button className="btn" onClick={copyDailyCapacityReport} title="Copy full report to clipboard">
+              📋 Copy Capacity Report
+            </button>
+          </div>
+
+          {/* 5 Card Controls */}
+          <div className="std-cards-grid">
+
+            {/* Variable 1: UPH */}
+            <div className="std-allowance-card">
+              <h3>
+                1. UPH (Units Per Hour)
+                <span className="cap-result-badge">{calcUPH.toFixed(1)} UPH</span>
+              </h3>
+              
+              <div className="cap-mode-selector">
+                <button 
+                  className={`cap-mode-btn ${uphMode === 'sync' ? 'active' : ''}`}
+                  onClick={() => setUphMode('sync')}
+                >
+                  Option C: 🔗 Sync Standard Time
+                </button>
+                <button 
+                  className={`cap-mode-btn ${uphMode === 'direct' ? 'active' : ''}`}
+                  onClick={() => setUphMode('direct')}
+                >
+                  Option A: ✏️ Direct Input
+                </button>
+                <button 
+                  className={`cap-mode-btn ${uphMode === 'sub' ? 'active' : ''}`}
+                  onClick={() => setUphMode('sub')}
+                >
+                  Option B: 🧮 Cycle Time Sub-Calc
+                </button>
+              </div>
+
+              {uphMode === 'sync' && (
+                <div style={{ fontSize: '0.85rem', color: '#60a5fa', background: 'rgba(59, 130, 246, 0.1)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                  🔗 Synced from Standard Time page: <strong>{unitsPerHour} UPH</strong> (3,600 / {stdSec.toFixed(2)}s)
+                </div>
+              )}
+
+              {uphMode === 'direct' && (
+                <div className="form-field">
+                  <label>Direct UPH Input (units/hour):</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="any"
+                    value={uphDirect} 
+                    onChange={(e) => setUphDirect(e.target.value)}
+                    placeholder="e.g. 500 units/hr"
+                  />
+                </div>
+              )}
+
+              {uphMode === 'sub' && (
+                <div className="cap-sub-calc-box">
+                  <label>Sub-calculation: <code>3600 seconds / Cycle Time (sec)</code></label>
+                  <div className="form-field">
+                    <label>Cycle Time in Seconds:</label>
+                    <input 
+                      type="number" 
+                      min="0.1" 
+                      step="any"
+                      value={uphCycleTimeSec} 
+                      onChange={(e) => setUphCycleTimeSec(e.target.value)}
+                      placeholder="Cycle time in seconds..."
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#34d399' }}>
+                    Formula: 3600 / {uphCycleTimeSec || '0'}s = <strong>{calcUPH.toFixed(1)} UPH</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Variable 2: Yield (%) */}
+            <div className="std-allowance-card">
+              <h3>
+                2. Yield (%)
+                <span className="cap-result-badge">{calcYieldPct.toFixed(2)}%</span>
+              </h3>
+
+              <div className="cap-mode-selector">
+                <button 
+                  className={`cap-mode-btn ${yieldMode === 'direct' ? 'active' : ''}`}
+                  onClick={() => setYieldMode('direct')}
+                >
+                  Option A: ✏️ Direct Input
+                </button>
+                <button 
+                  className={`cap-mode-btn ${yieldMode === 'sub' ? 'active' : ''}`}
+                  onClick={() => setYieldMode('sub')}
+                >
+                  Option B: 🧮 Parts Sub-Calc
+                </button>
+              </div>
+
+              {yieldMode === 'direct' && (
+                <div className="form-field">
+                  <label>Direct Yield Percentage (%):</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    step="0.1"
+                    value={yieldDirect} 
+                    onChange={(e) => setYieldDirect(e.target.value)}
+                    placeholder="e.g. 98%"
+                  />
+                </div>
+              )}
+
+              {yieldMode === 'sub' && (
+                <div className="cap-sub-calc-box">
+                  <label>Sub-calculation: <code>((Total - Defective) / Total) × 100</code></label>
+                  <div className="form-field">
+                    <label>Total Parts Produced:</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={yieldTotalParts} 
+                      onChange={(e) => setYieldTotalParts(e.target.value)}
+                      placeholder="Total parts..."
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Defective / Scrap Parts:</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={yieldDefectiveParts} 
+                      onChange={(e) => setYieldDefectiveParts(e.target.value)}
+                      placeholder="Defective parts..."
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#34d399' }}>
+                    Formula: (({yieldTotalParts || 0} - {yieldDefectiveParts || 0}) / {yieldTotalParts || 1}) × 100 = <strong>{calcYieldPct.toFixed(2)}%</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Variable 3: Working Hours */}
+            <div className="std-allowance-card">
+              <h3>
+                3. Working Hours
+                <span className="cap-result-badge">{calcWorkingHours.toFixed(2)} hrs</span>
+              </h3>
+
+              <div className="cap-mode-selector">
+                <button 
+                  className={`cap-mode-btn ${hoursMode === 'direct' ? 'active' : ''}`}
+                  onClick={() => setHoursMode('direct')}
+                >
+                  Option A: ✏️ Direct Input
+                </button>
+                <button 
+                  className={`cap-mode-btn ${hoursMode === 'sub' ? 'active' : ''}`}
+                  onClick={() => setHoursMode('sub')}
+                >
+                  Option B: 🧮 Shift Minutes Sub-Calc
+                </button>
+              </div>
+
+              {hoursMode === 'direct' && (
+                <div className="form-field">
+                  <label>Direct Working Hours (hours):</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.1"
+                    value={hoursDirect} 
+                    onChange={(e) => setHoursDirect(e.target.value)}
+                    placeholder="e.g. 7.5 hrs"
+                  />
+                </div>
+              )}
+
+              {hoursMode === 'sub' && (
+                <div className="cap-sub-calc-box">
+                  <label>Sub-calculation: <code>(Shift Min - Break Min) / 60</code></label>
+                  <div className="form-field">
+                    <label>Total Shift Minutes (e.g. 480 min = 8 hrs):</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={shiftMinutes} 
+                      onChange={(e) => setShiftMinutes(e.target.value)}
+                      placeholder="Shift minutes..."
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Planned Break / Downtime Minutes:</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={breakMinutes} 
+                      onChange={(e) => setBreakMinutes(e.target.value)}
+                      placeholder="Break minutes..."
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#34d399' }}>
+                    Formula: ({shiftMinutes || 0} - {breakMinutes || 0}) / 60 = <strong>{calcWorkingHours.toFixed(2)} hrs</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Variable 4: M/C Utilization (%) */}
+            <div className="std-allowance-card">
+              <h3>
+                4. M/C Utilization (%)
+                <span className="cap-result-badge">{calcUtilPct.toFixed(2)}%</span>
+              </h3>
+
+              <div className="cap-mode-selector">
+                <button 
+                  className={`cap-mode-btn ${utilMode === 'direct' ? 'active' : ''}`}
+                  onClick={() => setUtilMode('direct')}
+                >
+                  Option A: ✏️ Direct Input
+                </button>
+                <button 
+                  className={`cap-mode-btn ${utilMode === 'sub' ? 'active' : ''}`}
+                  onClick={() => setUtilMode('sub')}
+                >
+                  Option B: 🧮 Actual vs Max Speed Sub-Calc
+                </button>
+              </div>
+
+              {utilMode === 'direct' && (
+                <div className="form-field">
+                  <label>Direct M/C Utilization Percentage (%):</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    step="0.1"
+                    value={utilDirect} 
+                    onChange={(e) => setUtilDirect(e.target.value)}
+                    placeholder="e.g. 85%"
+                  />
+                </div>
+              )}
+
+              {utilMode === 'sub' && (
+                <div className="cap-sub-calc-box">
+                  <label>Sub-calculation: <code>(Actual Parts / Max Continuous Parts) × 100</code></label>
+                  <div className="form-field">
+                    <label>Actual Parts Produced per Day:</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={actualPartsPerDay} 
+                      onChange={(e) => setActualPartsPerDay(e.target.value)}
+                      placeholder="Actual parts/day..."
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Max Parts if M/C Runs Continuously at Max Speed:</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={maxSpeedPartsPerDay} 
+                      onChange={(e) => setMaxSpeedPartsPerDay(e.target.value)}
+                      placeholder="Max speed parts/day..."
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#34d399' }}>
+                    Formula: ({actualPartsPerDay || 0} / {maxSpeedPartsPerDay || 1}) × 100 = <strong>{calcUtilPct.toFixed(2)}%</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Variable 5: Custom Efficiency Modifier */}
+            <div className="std-allowance-card">
+              <h3>
+                5. Custom Efficiency Modifier
+                <span className="cap-result-badge">{calcEfficiencyPct}%</span>
+              </h3>
+              <div className="form-field">
+                <label>Efficiency Factor Name / Reason:</label>
+                <input 
+                  type="text" 
+                  value={customEfficiencyLabel} 
+                  onChange={(e) => setCustomEfficiencyLabel(e.target.value)}
+                  placeholder="e.g. Operator Efficiency, OEE..."
+                />
+              </div>
+              <div className="form-field">
+                <label>Custom Efficiency Multiplier (%):</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="0.5"
+                  value={customEfficiencyPct} 
+                  onChange={(e) => setCustomEfficiencyPct(e.target.value)}
+                  placeholder="e.g. 95%"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Master Output Result & Verification Card */}
+          <div className="master-equation-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <span className="label" style={{ color: '#34d399', fontSize: '0.9rem', fontWeight: '700' }}>
+                  🏆 FINAL CALCULATED DAILY CAPACITY (GOOD PARTS)
+                </span>
+                <div className="capacity-giant-val">
+                  {finalDailyCapacityParts.toLocaleString()} <small style={{ fontSize: '1.4rem', fontWeight: '700', color: '#93c5fd' }}>good parts / day</small>
+                </div>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Unrounded capacity: <strong>{rawDailyCapacity.toFixed(2)}</strong> parts/day
+                </span>
+              </div>
+
+              <button className="btn" onClick={copyDailyCapacityReport} title="Copy detailed capacity report">
+                📋 Copy Full Capacity Report
+              </button>
+            </div>
+
+            {/* Verification Math Chain */}
+            <div className="equation-chain">
+              <div style={{ fontWeight: '700', color: '#f8fafc', marginBottom: '6px' }}>
+                📐 Step-by-Step Master Verification Equation:
+              </div>
+              <div>
+                Daily Capacity = UPH × (Yield / 100) × Working Hours × (Utilization / 100) × (Efficiency / 100)
+              </div>
+              <div style={{ color: '#34d399', marginTop: '6px', fontWeight: '700' }}>
+                = {calcUPH.toFixed(1)} UPH × {(calcYieldPct / 100).toFixed(4)} (Yield) × {calcWorkingHours.toFixed(2)} hrs × {(calcUtilPct / 100).toFixed(4)} (Util) × {(calcEfficiencyPct / 100).toFixed(4)} (Eff)
+              </div>
+              <div style={{ color: '#a78bfa', fontWeight: '700', marginTop: '4px' }}>
+                = {rawDailyCapacity.toFixed(2)} ➔ <strong>{finalDailyCapacityParts.toLocaleString()} Good Parts / Day</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
