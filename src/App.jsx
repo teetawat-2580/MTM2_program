@@ -1158,55 +1158,79 @@ ${calcUPH.toFixed(1)} UPH × ${(calcYieldPct / 100).toFixed(4)} (Yield) × ${cal
             </div>
           </div>
 
-          {/* 🎨 Visual Process Line Flowchart (Derived directly from Calculator Table Rows) */}
+          {/* 🎨 Vertical Parallel Two-Hand Flowchart (Two-Handed Simo Chart) */}
           <div className="flowchart-visualizer-card" style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.15rem' }}>
-                  🎨 Visual Process Line Flowchart
-                </h3>
-                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  Real-time visual process flowchart automatically generated from your MTM-2 table inputs above.
-                </p>
-              </div>
-              
-              <div style={{ fontSize: '0.85rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                ⚡ Process Output: <strong>{calculatedUPH} UPH</strong> | Total: <strong>{totalCalculatedSec.toFixed(2)}s</strong> ({totalTMU} TMU)
-              </div>
+            <div style={{ marginBottom: '8px' }}>
+              <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.15rem' }}>
+                🎨 Vertical Two-Hand Process Flowchart (ผังการทำงานสองมือแนวตั้ง)
+              </h3>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                Real-time parallel left-hand and right-hand motion sequence derived from table inputs above.
+              </p>
             </div>
 
-            <div className="flowchart-nodes-wrapper">
-              {calculatorNodes.map((node, idx) => {
-                const isBottleneck = maxRowTMU > 0 && node.id === bottleneckRowId;
+            <div className="vertical-flowchart-container">
+              {/* 3-Column Parallel Header */}
+              <div className="vertical-flowchart-header">
+                <div className="lh-header">🤚 Left Hand (มือซ้าย)</div>
+                <div className="center-header">⏱️ Step & Duration</div>
+                <div className="rh-header">✋ Right Hand (มือขวา)</div>
+              </div>
+
+              {/* Vertical Steps Flow */}
+              {rows.map((row, idx) => {
+                const isBottleneck = maxRowTMU > 0 && row.id === bottleneckRowId;
+                const rowSec = (row.tmu || 0) * 0.036;
+
                 return (
-                  <React.Fragment key={node.id}>
-                    <div className={`flowchart-node ${isBottleneck ? 'bottleneck' : ''}`}>
-                      <span className="node-step-tag">Step {node.stepNum} {isBottleneck ? '• BOTTLENECK 🔥' : ''}</span>
-                      <div className="node-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }} title={node.title}>
-                        {node.title}
+                  <React.Fragment key={row.id}>
+                    <div className="vertical-flowchart-step">
+                      {/* Left Hand Card */}
+                      <div className="lh-hand-card">
+                        <div className="hand-code-badge">
+                          LH: {row.lhCode && row.lhCode !== '-' ? row.lhCode : '- (Wait/Hold)'}
+                        </div>
+                        <div className="hand-desc-text">
+                          {row.lhDesc && row.lhDesc.trim() ? row.lhDesc : '(รอการเคลื่อนไหว)'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                        LH: <code style={{ color: '#60a5fa' }}>{node.lhCode}</code> | RH: <code style={{ color: '#60a5fa' }}>{node.rhCode}</code>
+
+                      {/* Center Timeline Card */}
+                      <div className={`center-timeline-card ${isBottleneck ? 'bottleneck' : ''}`}>
+                        <span className="step-num-lbl">STEP {idx + 1}</span>
+                        <span className="step-time-lbl">{(row.tmu || 0)} TMU</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{rowSec.toFixed(2)}s</span>
+                        {isBottleneck && (
+                          <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#ef4444', marginTop: '2px' }}>
+                            🔥 BOTTLENECK
+                          </span>
+                        )}
                       </div>
-                      <div className="node-time">
-                        ⏱️ {node.sec.toFixed(2)}s <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({node.tmu} TMU)</small>
+
+                      {/* Right Hand Card */}
+                      <div className="rh-hand-card">
+                        <div className="hand-code-badge">
+                          RH: {row.rhCode && row.rhCode !== '-' ? row.rhCode : '- (Wait/Hold)'}
+                        </div>
+                        <div className="hand-desc-text">
+                          {row.rhDesc && row.rhDesc.trim() ? row.rhDesc : '(รอการเคลื่อนไหว)'}
+                        </div>
                       </div>
                     </div>
-                    {idx < calculatorNodes.length - 1 && <div className="flowchart-arrow">➔</div>}
+
+                    {/* Vertical Connector Line & Arrow */}
+                    {idx < rows.length - 1 && (
+                      <div className="vertical-connector">
+                        <div className="vertical-connector-line" />
+                        <div className="vertical-connector-arrow">▼</div>
+                      </div>
+                    )}
                   </React.Fragment>
                 );
               })}
-
-              {calculatorNodes.length > 0 && <div className="flowchart-arrow">➔</div>}
-
-              <div className="flowchart-node output-node">
-                <span className="node-step-tag" style={{ color: '#6ee7b7' }}>Process End ⚡</span>
-                <div className="node-title">Total Line Output</div>
-                <div className="node-time" style={{ color: '#34d399' }}>{calculatedUPH} UPH</div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{totalCalculatedSec.toFixed(2)}s ({totalTMU} TMU)</span>
-              </div>
             </div>
           </div>
+
         </>
       )}
 
