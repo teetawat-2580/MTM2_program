@@ -13,6 +13,7 @@ const ACTION_OPTIONS = [
   { value: 'PC', label: 'PC (Put C)', hasDistance: true },
   { value: 'GW', label: 'GW (Get Weight)', hasWeight: true },
   { value: 'PW', label: 'PW (Put Weight)', hasWeight: true },
+  { value: 'PT', label: 'PT (Process Time - sec)', hasProcessTime: true },
   { value: 'A', label: 'A (Action)' },
   { value: 'R', label: 'R (Regrasp)' },
   { value: 'E', label: 'E (Eye Action)' },
@@ -30,6 +31,7 @@ const getCodeThemeClass = (action) => {
   if (['GA', 'GB', 'GC'].includes(action)) return 'theme-get-cyan';
   if (['PA', 'PB', 'PC'].includes(action)) return 'theme-put-green';
   if (['A', 'R', 'E', 'C', 'S', 'F'].includes(action)) return 'theme-single-amber';
+  if (action === 'PT') return 'theme-pt-purple';
   return 'theme-other-rose';
 };
 
@@ -37,10 +39,10 @@ const CodeInput = ({ value, onChange }) => {
   // Parse initial value to state
   const parseValue = (val) => {
     if (!val || val === '-') return { action: '-', modifier: '' };
-    if (val.startsWith('GW') || val.startsWith('PW')) {
+    if (val.startsWith('GW') || val.startsWith('PW') || val.startsWith('PT')) {
       return { action: val.substring(0, 2), modifier: val.substring(2) };
     }
-    const match = val.match(/^([A-Z]+)(\d+)?$/);
+    const match = val.match(/^([A-Z]+)(\d+(\.\d+)?)?$/);
     if (match) {
       return { action: match[1], modifier: match[2] || '' };
     }
@@ -58,8 +60,9 @@ const CodeInput = ({ value, onChange }) => {
     const newAction = e.target.value;
     const opt = ACTION_OPTIONS.find(o => o.value === newAction);
     let newModifier = '';
-    if (opt?.hasDistance) newModifier = '15'; // Default distance
-    if (opt?.hasWeight) newModifier = '1';    // Default weight
+    if (opt?.hasDistance) newModifier = '15';    // Default distance
+    if (opt?.hasWeight) newModifier = '1';       // Default weight
+    if (opt?.hasProcessTime) newModifier = '1';  // Default 1 second
     
     const newVal = newAction === '-' ? '-' : `${newAction}${newModifier}`;
     onChange(newVal);
@@ -100,14 +103,15 @@ const CodeInput = ({ value, onChange }) => {
         </select>
       )}
       
-      {selectedOpt?.hasWeight && (
+      {(selectedOpt?.hasWeight || selectedOpt?.hasProcessTime) && (
         <input 
           type="number" 
-          min="1" 
-          value={parsed.modifier || '1'} 
+          min="0.1" 
+          step={selectedOpt?.hasProcessTime ? "0.1" : "1"}
+          value={parsed.modifier || (selectedOpt?.hasProcessTime ? '1' : '1')} 
           onChange={handleModifierChange} 
           className={`modifier-input ${themeClass}`}
-          placeholder="kg"
+          placeholder={selectedOpt?.hasProcessTime ? "sec" : "kg"}
         />
       )}
     </div>
@@ -128,7 +132,9 @@ const EXAMPLE_ROWS = [
   { id: 10, lhDesc: 'ออกแรงกดล็อกสลัก (Apply Pressure)', lhFreq: 1, lhCode: 'A', rhDesc: 'ออกแรงกดฝาครอบ (Apply Pressure cover)', rhFreq: 1, rhCode: 'A' },
   { id: 11, lhDesc: 'กดแป้นเท้าปั๊มลม 3 ครั้ง (Foot Motion x3)', lhFreq: 3, lhCode: 'F', rhDesc: '(รอรอบปั๊มลม)', rhFreq: 1, rhCode: '-' },
   { id: 12, lhDesc: 'หมุนมือหมุน 2 รอบ (Crank x2)', lhFreq: 2, lhCode: 'C', rhDesc: 'ก้าวขาถอยหลัง 1 ก้าว (Step back)', rhFreq: 1, rhCode: 'S' },
+  { id: 13, lhDesc: 'เวลารออบความร้อนเครื่องจักร 3.6 วินาที (Process Time 3.6s)', lhFreq: 1, lhCode: 'PT3.6', rhDesc: '(รอรอบเครื่องจักร - Machine Wait)', rhFreq: 1, rhCode: '-' },
 ];
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('calculator');
@@ -1019,7 +1025,14 @@ function App() {
                       <td className="tmu-val">32</td>
                       <td>การยืนขึ้นตรงแล้วก้มตัวลง</td>
                     </tr>
+                    <tr>
+                      <td className="code-cell">PT</td>
+                      <td>Process Time</td>
+                      <td className="tmu-val">sec / 0.036</td>
+                      <td>เวลาของกระบวนการเครื่องจักร/การรอคอย (ระบุเป็นวินาที แปลงเป็น TMU อัตโนมัติ: 1 sec ≈ 27.78 TMU)</td>
+                    </tr>
                   </tbody>
+
                 </table>
               </div>
             </div>

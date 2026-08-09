@@ -88,6 +88,15 @@ export const calculateCodeTMU = (code) => {
     return Math.floor(cappedWeight / 5); // 1 TMU per 5 kg
   }
 
+  // Check Process Time in seconds (PT)
+  if (upperCode.startsWith('PT')) {
+    const secStr = upperCode.substring(2);
+    const seconds = parseFloat(secStr) || 0;
+    // 1 second = 27.7778 TMU (1 TMU = 0.036 seconds)
+    return Math.round(seconds / 0.036);
+  }
+
+
 
   // Check single actions
   if (singleActionTable[upperCode] !== undefined) {

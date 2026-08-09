@@ -498,10 +498,22 @@ select option {
 /* Dropdown Options Color Styling */
 select option.theme-dim-gray { color: #94a3b8; background: #0f172a; }
 
+/* Theme 5: Process Time (PT) - Glowing Electric Violet */
+.action-select.theme-pt-purple {
+  color: #c084fc;
+  font-weight: 700;
+  border-color: rgba(192, 132, 252, 0.6);
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.25);
+  text-shadow: 0 0 6px rgba(192, 132, 252, 0.4);
+}
+
 select option.theme-get-cyan { color: #38bdf8; background: #0c4a6e; font-weight: bold; }
 select option.theme-put-green { color: #34d399; background: #064e3b; font-weight: bold; }
 select option.theme-single-amber { color: #fbbf24; background: #451a03; font-weight: bold; }
+select option.theme-pt-purple { color: #c084fc; background: #3b0764; font-weight: bold; }
 select option.theme-other-rose { color: #f472b6; background: #4c0519; font-weight: bold; }
+
 
 /* Auto-Split Highlight Row Animation */
 @keyframes splitRowPulse {
