@@ -142,6 +142,23 @@ function App() {
   const [showTrainingBanner, setShowTrainingBanner] = useState(false);
   const [highlightedRowIds, setHighlightedRowIds] = useState([]);
 
+  // Project Manager States
+  const [savedProjects, setSavedProjects] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mtm2_saved_projects');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [projectName, setProjectName] = useState('Process Plan #1');
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   const calculateRow = useCallback((row) => {
     const lhTMU = calculateCodeTMU(row.lhCode) * (parseFloat(row.lhFreq) || 0);
@@ -155,6 +172,134 @@ function App() {
       warning: warn
     };
   }, []);
+
+  const saveCurrentProject = () => {
+    const title = projectName.trim() || 'Untitled Process';
+    const now = new Date().toISOString();
+    let updatedList = [];
+
+    if (currentProjectId) {
+      updatedList = savedProjects.map(p => {
+        if (p.id === currentProjectId) {
+          return {
+            ...p,
+            name: title,
+            rows,
+            totalTMU,
+            updatedAt: now
+          };
+        }
+        return p;
+      });
+    } else {
+      const newId = Date.now().toString();
+      const newProj = {
+        id: newId,
+        name: title,
+        rows,
+        totalTMU,
+        createdAt: now,
+        updatedAt: now
+      };
+      updatedList = [newProj, ...savedProjects];
+      setCurrentProjectId(newId);
+    }
+
+    setSavedProjects(updatedList);
+    localStorage.setItem('mtm2_saved_projects', JSON.stringify(updatedList));
+    showToast(`💾 Saved "${title}" successfully!`);
+  };
+
+  const saveAsNewProject = () => {
+    const title = (projectName.trim() || 'Untitled Process') + ' (Copy)';
+    const now = new Date().toISOString();
+    const newId = Date.now().toString();
+    const newProj = {
+      id: newId,
+      name: title,
+      rows,
+      totalTMU,
+      createdAt: now,
+      updatedAt: now
+    };
+    const updatedList = [newProj, ...savedProjects];
+    setSavedProjects(updatedList);
+    setCurrentProjectId(newId);
+    setProjectName(title);
+    localStorage.setItem('mtm2_saved_projects', JSON.stringify(updatedList));
+    showToast(`✨ Saved as new project "${title}"!`);
+  };
+
+  const handleSelectProject = (e) => {
+    const selectedId = e.target.value;
+    if (!selectedId) {
+      setCurrentProjectId(null);
+      return;
+    }
+    const found = savedProjects.find(p => p.id === selectedId);
+    if (found) {
+      const recalculatedRows = (found.rows || []).map(r => calculateRow(r));
+      setRows(recalculatedRows);
+      setProjectName(found.name || 'Saved Process');
+      setCurrentProjectId(found.id);
+      showToast(`📁 Loaded "${found.name}"!`);
+    }
+  };
+
+  const deleteCurrentProject = () => {
+    if (!currentProjectId) return;
+    const projToDelete = savedProjects.find(p => p.id === currentProjectId);
+    const updatedList = savedProjects.filter(p => p.id !== currentProjectId);
+    setSavedProjects(updatedList);
+    localStorage.setItem('mtm2_saved_projects', JSON.stringify(updatedList));
+    setCurrentProjectId(null);
+    setProjectName('New Process Plan');
+    showToast(`🗑️ Deleted "${projToDelete?.name || 'Project'}"!`);
+  };
+
+  const exportProjectJSON = () => {
+    const data = {
+      version: 'MTM2_v1',
+      name: projectName || 'MTM2_Process',
+      exportedAt: new Date().toISOString(),
+      totalTMU,
+      rows
+    };
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(projectName || 'MTM2_Process').replace(/[^a-z0-9_-]/gi, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`📥 Exported "${projectName}.json"!`);
+  };
+
+  const importProjectJSON = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (Array.isArray(imported.rows)) {
+          const recalculated = imported.rows.map(r => calculateRow(r));
+          setRows(recalculated);
+          const importedName = imported.name || file.name.replace('.json', '');
+          setProjectName(importedName);
+          setCurrentProjectId(null);
+          showToast(`📤 Imported "${importedName}"!`);
+        } else {
+          alert('Invalid file format. Please upload a valid MTM-2 project JSON.');
+        }
+      } catch (err) {
+        alert('Failed to parse JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const loadExampleData = () => {
     const calculatedExamples = EXAMPLE_ROWS.map(row => calculateRow(row));
@@ -281,6 +426,12 @@ function App() {
 
   return (
     <div className="glass-panel">
+      {toastMessage && (
+        <div className="toast-notification">
+          {toastMessage}
+        </div>
+      )}
+
       <div className="header">
         <h1>MTM-2 Calculator</h1>
         <p>Methods-Time Measurement Analysis Tool</p>
@@ -300,6 +451,58 @@ function App() {
           </button>
         </div>
       </div>
+
+      {/* Project Management Bar */}
+      <div className="project-bar">
+        <div className="project-info">
+          <span className="project-label">📁 Project Name:</span>
+          <input 
+            type="text" 
+            value={projectName} 
+            onChange={(e) => setProjectName(e.target.value)} 
+            className="project-name-input"
+            placeholder="Name your process..."
+          />
+        </div>
+        
+        <div className="project-actions">
+          <button className="btn btn-sm" onClick={saveCurrentProject} title="Save current project to browser">
+            💾 Save
+          </button>
+          <button className="btn btn-secondary-sm btn-sm" onClick={saveAsNewProject} title="Save as new copy">
+            ➕ Save Copy
+          </button>
+
+          <select 
+            value={currentProjectId || ''} 
+            onChange={handleSelectProject} 
+            className="project-select"
+          >
+            <option value="">-- Saved Projects ({savedProjects.length}) --</option>
+            {savedProjects.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.totalTMU} TMU)
+              </option>
+            ))}
+          </select>
+
+          {currentProjectId && (
+            <button className="btn btn-danger-sm btn-sm" onClick={deleteCurrentProject} title="Delete this saved project">
+              🗑️
+            </button>
+          )}
+
+          <button className="btn btn-secondary-sm btn-sm" onClick={exportProjectJSON} title="Download JSON file backup">
+            📥 Export
+          </button>
+
+          <label className="btn btn-secondary-sm btn-sm import-label" title="Upload JSON file from disk">
+            📤 Import
+            <input type="file" accept=".json" onChange={importProjectJSON} style={{ display: 'none' }} />
+          </label>
+        </div>
+      </div>
+
 
       {activeTab === 'calculator' && (
         <>
